@@ -1,0 +1,37 @@
+name: Prevent Secrets & .env Leaks
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  security-scan:
+    name: Scan for .env files and secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Block .env files
+        run: |
+          echo "🔍 Checking for .env files..."
+          
+          FOUND=$(git ls-files | grep -E '(^|/)\.env($|\.)' || true)
+
+          if [ -n "$FOUND" ]; then
+            echo "❌ ERROR: .env files detected:"
+            echo "$FOUND"
+            echo ""
+            echo "Remove these files and try again."
+            exit 1
+          fi
+
+          echo "✅ No .env files found"
+
+      - name: Run Gitleaks (secret scanner)
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: detect --source . --verbose --redact --exit-code 1
